@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta author="Nguyen Anh Tu">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar System and Galaxies</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: black;
+        }
+    </style>
+</head>
+
+<body>
+    <script type="module">
+        import * as THREE from "https://cdn.skypack.dev/three@0.136.0";
+        import { OrbitControls } from "https://cdn.skypack.dev/three@0.136.0/examples/jsm/controls/OrbitControls";
+        import { Lensflare, LensflareElement } from "https://cdn.skypack.dev/three@0.136.0/examples/jsm/objects/Lensflare.js";
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x000000);
+
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 2000);
+        camera.position.z = 300;
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true;
+
+        function createStars() {
+            const geometry = new THREE.BufferGeometry();
+            const starCount = 20000;
+            const starPositions = new Float32Array(starCount * 3);
+
+            for (let i = 0; i < starCount * 3; i++) {
+                starPositions[i] = (Math.random() - 0.5) * 2000;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
+            const starMaterial = new THREE.PointsMaterial({ color: 0x888888, size: 0.7 });
+            const stars = new THREE.Points(geometry, starMaterial);
+            scene.add(stars);
+        }
+
+        function createPlanet(name, radius, color, size, speed) {
+            const planetGeometry = new THREE.SphereGeometry(size, 32, 32);
+            const planetMaterial = new THREE.MeshStandardMaterial({
+                color: color,
+                metalness: 0.3,
+                roughness: 0.6
+            });
+            const planet = new THREE.Mesh(planetGeometry, planetMaterial);
+            planet.userData = { radius, speed, angle: 0 };
+            scene.add(planet);
+            return planet;
+        }
+
+        function createMoon(planet, radius, size, speed) {
+            const moonGeometry = new THREE.SphereGeometry(size, 16, 16);
+            const moonMaterial = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                metalness: 0.1,
+                roughness: 0.9
+            });
+            const moon = new THREE.Mesh(moonGeometry, moonMaterial);
+            moon.userData = { parent: planet, radius, speed, angle: 0 };
+            scene.add(moon);
+            return moon;
+        }
+
+        function createSun() {
+            const sunGeometry = new THREE.SphereGeometry(30, 64, 64);
+            const sunMaterial = new THREE.MeshBasicMaterial({ color: 0xffff00 });
+            const sun = new THREE.Mesh(sunGeometry, sunMaterial);
+
+            const textureLoader = new THREE.TextureLoader();
+            const textureFlare0 = textureLoader.load('https://threejs.org/examples/textures/lensflare/lensflare0.png');
+            const lensflare = new Lensflare();
+            lensflare.addElement(new LensflareElement(textureFlare0, 700, 0));
+            sun.add(lensflare);
+
+            const pointLight = new THREE.PointLight(0xffffff, 2, 2000);
+            sun.add(pointLight);
+            sun.userData.light = pointLight; // Save reference to light
+            scene.add(sun);
+            return sun;
+        }
+
+        function createComet() {
+            const cometGeometry = new THREE.SphereGeometry(1, 16, 16);
+            const cometMaterial = new THREE.MeshStandardMaterial({ color: 0x00ff00 });
+            const comet = new THREE.Mesh(cometGeometry, cometMaterial);
+            comet.userData = { angle: Math.random() * Math.PI * 2, speed: 0.01 + Math.random() * 0.02 };
+            scene.add(comet);
+            return comet;
+        }
+
+        const sun = createSun();
+        const earth = createPlanet("Earth", 70, 0x2266ff, 5, 0.007);
+        const moon = createMoon(earth, 10, 1.5, 0.02);
+
+        const planets = [
+            { name: "Mercury", radius: 30, color: 0xaaaaaa, size: 2, speed: 0.01 },
+            { name: "Venus", radius: 50, color: 0xffcc66, size: 4, speed: 0.008 },
+            { name: "Mars", radius: 90, color: 0xff4500, size: 3.5, speed: 0.006 },
+            { name: "Jupiter", radius: 130, color: 0xffd700, size: 10, speed: 0.004 },
+            { name: "Saturn", radius: 160, color: 0xffcc00, size: 8, speed: 0.003 },
+            { name: "Uranus", radius: 200, color: 0x66ccff, size: 6, speed: 0.002 },
+            { name: "Neptune", radius: 240, color: 0x3366cc, size: 6, speed: 0.0015 }
+        ];
+
+        const planetObjects = planets.map(planet => createPlanet(planet.name, planet.radius, planet.color, planet.size, planet.speed));
+
+        createStars();
+
+        const comets = [];
+        for (let i = 0; i < 5; i++) {
+            comets.push(createComet());
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Quay Mặt Trời
+            sun.rotation.y += 0.001;
+
+            // Quay quanh các hành tinh
+            planetObjects.forEach(planet => {
+                planet.userData.angle += planet.userData.speed;
+                planet.position.set(
+                    planet.userData.radius * Math.cos(planet.userData.angle),
+                    0,
+                    planet.userData.radius * Math.sin(planet.userData.angle)
+                );
+                planet.rotation.y += 0.01;
+            });
+
+            // Cập nhật vị trí Trái Đất
+            earth.userData.angle += earth.userData.speed;
+            earth.position.set(
+                earth.userData.radius * Math.cos(earth.userData.angle),
+                0,
+                earth.userData.radius * Math.sin(earth.userData.angle)
+            );
+            earth.rotation.y += 0.01;
+
+            // Quay Mặt Trăng xung quanh Trái Đất
+            moon.userData.angle += moon.userData.speed;
+            moon.position.set(
+                earth.position.x + moon.userData.radius * Math.cos(moon.userData.angle),
+                earth.position.y,
+                earth.position.z + moon.userData.radius * Math.sin(moon.userData.angle)
+            );
+
+            // Cập nhật và di chuyển sao chổi
+            comets.forEach(comet => {
+                comet.userData.angle += comet.userData.speed;
+                comet.position.set(
+                    300 * Math.cos(comet.userData.angle),
+                    0,
+                    300 * Math.sin(comet.userData.angle)
+                );
+            });
+
+            // Cập nhật độ sáng của Mặt Trời theo khoảng cách từ camera
+            const distance = camera.position.length();
+            sun.userData.light.intensity = Math.max(0, 2 - (distance / 300)); // Giảm cường độ ánh sáng khi xa
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+
+    </script>
+</body>
+
+</html>
